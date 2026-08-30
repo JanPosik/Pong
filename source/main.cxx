@@ -94,7 +94,7 @@ static void key_callback(GLFWwindow* window, int key, int scancode, int action, 
 	if (key >= 0 && key <= 1024) {
 		if (action == GLFW_PRESS)
 			Pong.Keys[key] = true;
-		if (action == GLFW_RELEASE)
+		else if (action == GLFW_RELEASE)
 			Pong.Keys[key] = false;
 	}
 }

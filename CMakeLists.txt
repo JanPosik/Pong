@@ -19,6 +19,8 @@ target_sources(pong PRIVATE
 	source/texture.cxx
 	source/resource_manager.cxx
 	source/sprite_renderer.cxx
+	source/game_object.cxx
+	source/ball_object.cxx
 	# glad
 	third_party/glad/src/glad.c
 	# stb_image
