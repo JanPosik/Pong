@@ -29,13 +29,14 @@ public:
 	unsigned int Width, Height;
 	// constructor, desctuctor
 	Game(unsigned int width, unsigned int height);
-	~Game();
 	// loads shaders, textures
 	void Init();
 	// game loop
 	void ProcessInput(float dt);
 	void Update(float dt);
 	void Render();
+	// free resources
+	void Free();
 };
 
 #endif

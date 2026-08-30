@@ -16,7 +16,7 @@ Game::Game(unsigned int width, unsigned int height)
 	: State(GAME_MENU), Keys(), Width(width), Height(height)
 {}
 
-Game::~Game() {
+void Game::Free() {
 	delete Renderer;
 	delete Player1;
 	delete Player2;

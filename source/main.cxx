@@ -79,6 +79,7 @@ int main() {
 
 	// free allocated memory
 	ResourceManager::FreeResources();
+	Pong.Free();
 	glfwTerminate();
 
 	return 0;
