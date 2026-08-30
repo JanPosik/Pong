@@ -70,7 +70,7 @@ int main() {
 		Pong.Update(deltaTime);
 
 		// render
-		glClearColor(1.0, 0.3, 0.1, 1.0);
+		glClearColor(1.0f, 0.3f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 		Pong.Render();
 

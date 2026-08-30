@@ -18,6 +18,7 @@ target_sources(pong PRIVATE
 	source/shader.cxx
 	source/texture.cxx
 	source/resource_manager.cxx
+	source/sprite_renderer.cxx
 	# glad
 	third_party/glad/src/glad.c
 	# stb_image
