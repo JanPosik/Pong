@@ -6,6 +6,10 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/ext/vector_float2.hpp>
+#include <glm/geometric.hpp>
+#include <glm/glm.hpp>
+#include <tuple>
 
 SpriteRenderer* Renderer;
 GameObject* Player1;
@@ -74,6 +78,10 @@ void Game::ProcessInput(float dt) {
 
 void Game::Update(float dt) {
 	Ball->Move(dt, this->Height);
+	this->DoCollisions();
+
+	if (Ball->Position.x <= 0.0f || Ball->Position.x >= this->Width)
+		this->Reset();
 }
 
 void Game::Render () {
@@ -82,4 +90,82 @@ void Game::Render () {
 		Player2->Draw(*Renderer);
 		Ball->Draw(*Renderer);
 	}
+}
+
+void Game::Reset() {
+	Player1->Position = glm::vec2(0.0f, this->Height / 2.0f - PLAYER_SIZE.y / 2.0f);
+	Player2->Position = glm::vec2(this->Width - PLAYER_SIZE.x, this->Height / 2.0f - PLAYER_SIZE.y / 2.0f);
+	Ball->Reset(glm::vec2(this->Width / 2.0f, this->Height / 2.0f), INITIAL_BALL_VELOCITY);
+}
+
+// collision detection
+bool CheckCollision(GameObject& one, GameObject& two);
+Collision CheckCollision(BallObject& one, GameObject& two);
+Direction VectorDirection(glm::vec2 target);
+
+void Game::DoCollisions() {
+	// player collisions
+	GameObject* Players[2] = { Player1, Player2 };
+
+	for (unsigned int i = 0; i < 2; i++) {
+		Collision result = CheckCollision(*Ball, *Players[i]);
+		if (!Ball->Stuck && std::get<0>(result)) {
+		        float centerBoard = Players[i]->Position.y + Players[i]->Size.y / 2.0f;
+		        float distance = (Ball->Position.y + Ball->Radius) - centerBoard;
+        		float percentage = distance / (Players[i]->Size.y / 2.0f);
+        		// then move accordingly
+        		float strength = -2.0f;
+        		glm::vec2 oldVelocity = Ball->Velocity;
+        		Ball->Velocity.x = -1.0f * abs((int)Ball->Velocity.x) * (i == 0 ? -1.0f : 1.0f);
+        		Ball->Velocity.y = INITIAL_BALL_VELOCITY.y * percentage * strength; 
+        		Ball->Velocity = glm::normalize(Ball->Velocity) * glm::length(oldVelocity);
+		}
+	}
+}
+
+bool CheckCollision(GameObject& one, GameObject& two) {
+	// collision x-axis
+	bool collisionX = one.Position.x <= two.Position.x + two.Size.x && one.Position.x + one.Size.x >= two.Position.x;
+	// collision y-axis
+	bool collisionY = one.Position.y <= two.Position.y + two.Size.y && one.Position.y + one.Size.y >= two.Position.y;
+	// collision on both axes
+	return collisionX && collisionY;
+}
+
+Collision CheckCollision(BallObject& one, GameObject& two) {
+	// center of ball
+	glm::vec2 center(one.Position + one.Radius);
+	// AABB info (center, half-extents)
+	glm::vec2 aabb_half_extents(two.Size.x / 2.0f, two.Size.y / 2.0f);
+	glm::vec2 aabb_center(two.Position.x + aabb_half_extents.x, two.Position.y + aabb_half_extents.y);
+	// difference vector between centers
+	glm::vec2 difference = center - aabb_center;
+	glm::vec2 clamped = glm::clamp(difference, -aabb_half_extents, aabb_half_extents);
+	// box closest to circle
+	glm::vec2 closest = aabb_center + clamped;
+	// difference between closest and circle's center, check collision
+	difference = closest - center;
+	if (glm::length(difference) < one.Radius)
+		return std::make_tuple(true, VectorDirection(difference), difference);
+	else
+		return std::make_tuple(false, UP, glm::vec2(0.0f, 0.0f));
+}
+
+Direction VectorDirection(glm::vec2 target) {
+	glm::vec2 compass[] = {
+		glm::vec2(0.0f, 1.0f),	// up
+		glm::vec2(1.0f, 0.0f),	// right
+		glm::vec2(0.0f, -1.0f), // down
+		glm::vec2(-1.0f, 0.0f)	// left
+	};
+	float max = 0.0f;
+	unsigned int best_match = -1;
+	for (unsigned int i = 0; i < 4; i++) {
+		float dot_product = glm::dot(glm::normalize(target), compass[i]);
+		if (dot_product > max) {
+			max = dot_product;
+			best_match = i;
+		}
+	}
+	return (Direction)best_match;
 }
