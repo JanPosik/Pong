@@ -3,15 +3,16 @@
 #include "ball_object.h"
 #include "resource_manager.h"
 #include "sprite_renderer.h"
+#include "particle_generator.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/ext/vector_float2.hpp>
 #include <glm/geometric.hpp>
 #include <glm/glm.hpp>
-#include <tuple>
 
 SpriteRenderer* Renderer;
+ParticleGenerator* Particles;
 GameObject* Player1;
 GameObject* Player2;
 BallObject* Ball;
@@ -22,6 +23,7 @@ Game::Game(unsigned int width, unsigned int height)
 
 void Game::Free() {
 	delete Renderer;
+	delete Particles;
 	delete Player1;
 	delete Player2;
 	delete Ball;
@@ -30,15 +32,19 @@ void Game::Free() {
 void Game::Init() {
 	// load shaders
 	ResourceManager::LoadShader("resources/shaders/sprite_vertex.shader", "resources/shaders/sprite_fragment.shader", nullptr, "sprite");
+	ResourceManager::LoadShader("resources/shaders/particle_vertex.shader", "resources/shaders/particle_fragment.shader", nullptr, "particle");
 	// configure shaders
 	glm::mat4 projection = glm::ortho(0.0f, static_cast<float>(Width), static_cast<float>(Height), 0.0f, -1.0f, 1.0f);
 	ResourceManager::GetShader("sprite").Use().SetInt("image", 0);
 	ResourceManager::GetShader("sprite").SetMat4("projection", projection);
+	ResourceManager::GetShader("particle").Use().SetMat4("projection", projection);
 	// render specific controls
 	Renderer = new SpriteRenderer(ResourceManager::GetShader("sprite"));
 	// load texture
 	ResourceManager::LoadTexture("resources/textures/awesomeface.png", true, "face");
 	ResourceManager::LoadTexture("resources/textures/paddle.png", true, "paddle");
+	ResourceManager::LoadTexture("resources/textures/background.jpg", false, "background");
+	ResourceManager::LoadTexture("resources/textures/particle.png", true, "particle");
 	// player
 	glm::vec2 player1Pos = glm::vec2(0.0f, Height / 2.0f - PLAYER_SIZE.y / 2.0f);
 	glm::vec2 player2Pos = glm::vec2(this->Width - PLAYER_SIZE.x, Height / 2.0f - PLAYER_SIZE.y / 2.0f);
@@ -47,6 +53,8 @@ void Game::Init() {
 	// ball
 	glm::vec2 ballPos = glm::vec2(this->Width / 2.0f - BALL_RADIUS, this->Height / 2.0f - BALL_RADIUS);
 	Ball = new BallObject(ballPos, BALL_RADIUS, INITIAL_BALL_VELOCITY, ResourceManager::GetTexture("face"));
+	// particles
+	Particles = new ParticleGenerator(ResourceManager::GetShader("particle"), ResourceManager::GetTexture("particle"), 500);
 
 	State = GAME_ACTIVE;
 }
@@ -77,17 +85,26 @@ void Game::ProcessInput(float dt) {
 }
 
 void Game::Update(float dt) {
+	// update objects
 	Ball->Move(dt, this->Height);
+	// check for collisions
 	this->DoCollisions();
+	// update particles
+	Particles->Update(dt, *Ball, 2, glm::vec2(Ball->Radius / 2.0f));
 
 	if (Ball->Position.x <= 0.0f || Ball->Position.x >= this->Width)
 		this->Reset();
 }
 
 void Game::Render () {
+	// background
+	Renderer->DrawSprite(ResourceManager::GetTexture("background"), glm::vec2(0.0f, 0.0f), glm::vec2(this->Width, this->Height));
+	// players and ball
 	if (State == GAME_ACTIVE) {
 		Player1->Draw(*Renderer);
 		Player2->Draw(*Renderer);
+		// render particles before ball, so they're behind
+		Particles->Draw();
 		Ball->Draw(*Renderer);
 	}
 }
@@ -95,7 +112,9 @@ void Game::Render () {
 void Game::Reset() {
 	Player1->Position = glm::vec2(0.0f, this->Height / 2.0f - PLAYER_SIZE.y / 2.0f);
 	Player2->Position = glm::vec2(this->Width - PLAYER_SIZE.x, this->Height / 2.0f - PLAYER_SIZE.y / 2.0f);
-	Ball->Reset(glm::vec2(this->Width / 2.0f, this->Height / 2.0f), INITIAL_BALL_VELOCITY);
+	int random_diretion_x = (rand() % 2) * 2 - 1;
+	int random_diretion_y = (rand() % 2) * 2 - 1;
+	Ball->Reset(glm::vec2(this->Width / 2.0f, this->Height / 2.0f), glm::vec2(INITIAL_BALL_VELOCITY.x * random_diretion_x, INITIAL_BALL_VELOCITY.y * random_diretion_y));
 }
 
 // collision detection
@@ -119,6 +138,8 @@ void Game::DoCollisions() {
         		Ball->Velocity.x = -1.0f * abs((int)Ball->Velocity.x) * (i == 0 ? -1.0f : 1.0f);
         		Ball->Velocity.y = INITIAL_BALL_VELOCITY.y * percentage * strength; 
         		Ball->Velocity = glm::normalize(Ball->Velocity) * glm::length(oldVelocity);
+			// make harder to hit the ball by fasten it
+			Ball->Velocity.x *= 1.1f;
 		}
 	}
 }

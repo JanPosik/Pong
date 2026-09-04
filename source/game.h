@@ -13,7 +13,7 @@ const float PLAYER_VELOCITY(500.0f);
 // initial ball velocity
 const glm::vec2 INITIAL_BALL_VELOCITY(300.0f, -150.0f);
 // radius of ball
-const float BALL_RADIUS(16.0f);
+const float BALL_RADIUS(14.0f);
 
 enum GameState {
 	GAME_MENU,
