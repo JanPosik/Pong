@@ -4,6 +4,7 @@
 #include "resource_manager.h"
 #include "sprite_renderer.h"
 #include "particle_generator.h"
+#include "post_processor.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -16,6 +17,9 @@ ParticleGenerator* Particles;
 GameObject* Player1;
 GameObject* Player2;
 BallObject* Ball;
+PostProcessor* Effects;
+
+float ShakeTime = 0.0f;
 
 Game::Game(unsigned int width, unsigned int height)
 	: State(GAME_MENU), Keys(), Width(width), Height(height)
@@ -27,12 +31,14 @@ void Game::Free() {
 	delete Player1;
 	delete Player2;
 	delete Ball;
+	delete Effects;
 }
 
 void Game::Init() {
 	// load shaders
 	ResourceManager::LoadShader("resources/shaders/sprite_vertex.shader", "resources/shaders/sprite_fragment.shader", nullptr, "sprite");
 	ResourceManager::LoadShader("resources/shaders/particle_vertex.shader", "resources/shaders/particle_fragment.shader", nullptr, "particle");
+	ResourceManager::LoadShader("resources/shaders/postprocessing_vertex.shader", "resources/shaders/postprocessing_fragment.shader", nullptr, "postprocessing");
 	// configure shaders
 	glm::mat4 projection = glm::ortho(0.0f, static_cast<float>(Width), static_cast<float>(Height), 0.0f, -1.0f, 1.0f);
 	ResourceManager::GetShader("sprite").Use().SetInt("image", 0);
@@ -55,6 +61,8 @@ void Game::Init() {
 	Ball = new BallObject(ballPos, BALL_RADIUS, INITIAL_BALL_VELOCITY, ResourceManager::GetTexture("face"));
 	// particles
 	Particles = new ParticleGenerator(ResourceManager::GetShader("particle"), ResourceManager::GetTexture("particle"), 500);
+	// effects
+	Effects = new PostProcessor(ResourceManager::GetShader("postprocessing"), this->Width, this->Height);
 
 	State = GAME_ACTIVE;
 }
@@ -92,20 +100,29 @@ void Game::Update(float dt) {
 	// update particles
 	Particles->Update(dt, *Ball, 2, glm::vec2(Ball->Radius / 2.0f));
 
+	// reduce shake time
+	if (ShakeTime > 0.0f) {
+		ShakeTime -= dt;
+		if (ShakeTime <= 0.0f)
+			Effects->Shake = false;
+	}
+
 	if (Ball->Position.x <= 0.0f || Ball->Position.x >= this->Width)
 		this->Reset();
 }
 
 void Game::Render () {
-	// background
-	Renderer->DrawSprite(ResourceManager::GetTexture("background"), glm::vec2(0.0f, 0.0f), glm::vec2(this->Width, this->Height));
-	// players and ball
 	if (State == GAME_ACTIVE) {
+		Effects->BeginRender();
+		// background
+		Renderer->DrawSprite(ResourceManager::GetTexture("background"), glm::vec2(0.0f, 0.0f), glm::vec2(this->Width, this->Height));
 		Player1->Draw(*Renderer);
 		Player2->Draw(*Renderer);
 		// render particles before ball, so they're behind
 		Particles->Draw();
 		Ball->Draw(*Renderer);
+		Effects->EndRender();
+		Effects->Render(static_cast<float>(glfwGetTime()));
 	}
 }
 
@@ -140,6 +157,10 @@ void Game::DoCollisions() {
         		Ball->Velocity = glm::normalize(Ball->Velocity) * glm::length(oldVelocity);
 			// make harder to hit the ball by fasten it
 			Ball->Velocity.x *= 1.1f;
+
+			// do shake
+			ShakeTime = 0.05f;
+			Effects->Shake = true;
 		}
 	}
 }

@@ -22,6 +22,7 @@ target_sources(pong PRIVATE
 	source/game_object.cxx
 	source/ball_object.cxx
 	source/particle_generator.cxx
+	source/post_processor.cxx
 	# glad
 	third_party/glad/src/glad.c
 	# stb_image
