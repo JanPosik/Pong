@@ -30,5 +30,5 @@ glm::vec2 BallObject::Move(float dt, unsigned int window_height) {
 void BallObject::Reset(glm::vec2 positon, glm::vec2 velocity) {
 	Position = positon;
 	Velocity = velocity;
-	Stuck = true;
+	Stuck = false;
 }

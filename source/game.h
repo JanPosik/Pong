@@ -1,9 +1,11 @@
 #ifndef GAME_H
 #define GAME_H
 
+#include "powerup.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <tuple>
+#include <vector>
 
 // initial size of player paddle
 const glm::vec2 PLAYER_SIZE(20.0f, 100.0f);
@@ -37,6 +39,7 @@ public:
 	GameState State;
 	bool Keys[1024];
 	unsigned int Width, Height;
+	std::vector<PowerUp> PowerUps;
 	// constructor, desctuctor
 	Game(unsigned int width, unsigned int height);
 	// loads shaders, textures
@@ -51,6 +54,9 @@ public:
 	void DoCollisions();
 	// reset
 	void Reset();
+	// power ups
+	void SpawnPowerUps();
+	void UpdatePowerUps(float dt);
 };
 
 #endif
