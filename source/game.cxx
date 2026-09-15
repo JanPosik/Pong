@@ -6,6 +6,7 @@
 #include "sprite_renderer.h"
 #include "particle_generator.h"
 #include "post_processor.h"
+#include "text_renderer.h"
 
 #include <algorithm>
 #include <glad/glad.h>
@@ -13,6 +14,7 @@
 #include <glm/ext/vector_float2.hpp>
 #include <glm/geometric.hpp>
 #include <glm/glm.hpp>
+#include <sstream>
 
 SpriteRenderer* Renderer;
 ParticleGenerator* Particles;
@@ -20,8 +22,12 @@ GameObject* Player1;
 GameObject* Player2;
 BallObject* Ball;
 PostProcessor* Effects;
+TextRenderer* Text;
 
 float ShakeTime = 0.0f;
+int Score1 = 0;
+int Score2 = 0;
+std::string win_text;
 
 Game::Game(unsigned int width, unsigned int height)
 	: State(GAME_MENU), Keys(), Width(width), Height(height)
@@ -69,8 +75,9 @@ void Game::Init() {
 	Particles = new ParticleGenerator(ResourceManager::GetShader("particle"), ResourceManager::GetTexture("particle"), 500);
 	// effects
 	Effects = new PostProcessor(ResourceManager::GetShader("postprocessing"), this->Width, this->Height);
-
-	State = GAME_ACTIVE;
+	// text
+	Text = new TextRenderer(this->Width, this->Height);
+	Text->Load("resources/fonts/OCRAEXT.TTF", 24);
 }
 
 void Game::ProcessInput(float dt) {
@@ -92,8 +99,20 @@ void Game::ProcessInput(float dt) {
 			if (Player2->Position.y <= this->Height - Player2->Size.y)
 				Player2->Position.y += velocity;
 		}
-		if (this->Keys[GLFW_KEY_SPACE]) {
+	}
+	if (State == GAME_MENU) {
+		if (this->Keys[GLFW_KEY_ENTER]) {
+			State = GAME_ACTIVE;
 			Ball->Stuck = false;
+		}
+	}
+	if (State == GAME_WIN) {
+		if (this->Keys[GLFW_KEY_ENTER]) {
+			Score1 = Score2 = 0;
+			State = GAME_MENU;
+			Effects->Chaos = false;
+			Ball->Stuck = true;
+			this->Keys[GLFW_KEY_ENTER] = false;
 		}
 	}
 }
@@ -115,12 +134,27 @@ void Game::Update(float dt) {
 			Effects->Shake = false;
 	}
 
-	if (Ball->Position.x <= 0.0f || Ball->Position.x >= this->Width)
+	if (Ball->Position.x + Ball->Size.x <= 0.0f) {
+		Score2++;
 		this->Reset();
+	}
+	if (Ball->Position.x >= this->Width) {
+		Score1++;
+		this->Reset();
+	}
+
+	// check win conditions
+	if (Score1 == 10 || Score2 == 10) {
+		State = GAME_WIN;
+		win_text = (Score1 == 10) ? "Player1 won!!!" : "Player2 won!!!";
+		Effects->Chaos = true;
+		Ball->Stuck = true;
+		this->Reset();
+	}
 }
 
 void Game::Render () {
-	if (State == GAME_ACTIVE) {
+	if (State == GAME_ACTIVE || State == GAME_MENU || State == GAME_WIN) {
 		Effects->BeginRender();
 		// background
 		Renderer->DrawSprite(ResourceManager::GetTexture("background"), glm::vec2(0.0f, 0.0f), glm::vec2(this->Width, this->Height));
@@ -135,6 +169,15 @@ void Game::Render () {
 		Ball->Draw(*Renderer);
 		Effects->EndRender();
 		Effects->Render(static_cast<float>(glfwGetTime()));
+		std::stringstream ss; ss << Score1 << " : " << Score2;
+		Text->RenderText(ss.str(), this->Width / 2.0f - (ss.str().length() / 2.0f) * 12 - 6, 5.0f, 1.0f);
+	}
+	if (State == GAME_MENU) {
+		Text->RenderText("Press ENTER to start", 490.0f, this->Height / 2.0f + 100.0f, 1.0f);
+	}
+	if (State == GAME_WIN) {
+		Text->RenderText(win_text, 540.0f, this->Height / 2.0f, 1.0f, glm::vec3(0.0f, 1.0f, 0.0f));
+		Text->RenderText("Press ENTER to play again or ESC to quit", 420.0f, this->Height / 2.0f + 50.0f, 0.75f);
 	}
 }
 

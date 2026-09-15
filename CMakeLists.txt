@@ -8,6 +8,7 @@ project(pong VERSION 0.1.0 LANGUAGES C CXX)
 find_package(glfw3 REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(glm REQUIRED)
+find_package(Freetype REQUIRED)
 
 add_executable(pong)
 
@@ -23,6 +24,7 @@ target_sources(pong PRIVATE
 	source/ball_object.cxx
 	source/particle_generator.cxx
 	source/post_processor.cxx
+	source/text_renderer.cxx
 	# glad
 	third_party/glad/src/glad.c
 	# stb_image
@@ -38,4 +40,5 @@ target_link_libraries(pong PRIVATE
 	glfw
 	OpenGL::GL
 	glm::glm
+	Freetype::Freetype
 )
